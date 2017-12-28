@@ -1,0 +1,15 @@
+{
+  "elements": [
+    { "type": "Label", "label": "Messsensor" },
+    { "type": "SelectVariable", "name": "PowerId", "caption": "Power (in Watt)" },
+    { "type": "SelectVariable", "name": "EnergyId", "caption": "Energie (in W/h)" },
+    { "type": "Label", "label": "Zustand: Aus" },
+    { "type": "NumberSpinner", "name": "PowerOff", "caption": "Watt", "digits": 1},
+    { "type": "NumberSpinner", "name": "DelayOff", "caption": "Verzögerung"},
+    { "type": "Label", "label": "Zustand: Fertig" },
+    { "type": "NumberSpinner", "name": "PowerDone", "caption": "Watt", "digits": 1},
+    { "type": "NumberSpinner", "name": "DelayDone", "caption": "Verzögerung"}
+  ],
+  "actions": [
+  ]
+}

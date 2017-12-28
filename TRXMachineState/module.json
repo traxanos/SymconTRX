@@ -1,0 +1,11 @@
+{
+  "id": "{16A9D99F-4A59-470A-86AA-CABB6D8280F0}",
+  "name": "TRXMachineState",
+  "type": 3,
+  "vendor": "Traxanos",
+  "aliases": [ "TRXMS", "Traxanos machine state" ],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [ "" ],
+  "prefix": "TRXMS"
+}
