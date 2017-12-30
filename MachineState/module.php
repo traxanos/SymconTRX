@@ -1,16 +1,15 @@
-<?
-class TRXMachineState extends IPSModule {
+<? class MachineState extends IPSModule {
   public function __construct($InstanceID) {
     parent::__construct($InstanceID);
   }
 
   public function Create() {
-    if (!IPS_VariableProfileExists('TRXMS.State')) {
-      IPS_CreateVariableProfile('TRXMS.State', 1);
-      IPS_SetVariableProfileAssociation('TRXMS.State', 0, 'Off', '', 0x000000);
-      IPS_SetVariableProfileAssociation('TRXMS.State', 1, 'On', '', 0x000000);
-      IPS_SetVariableProfileAssociation('TRXMS.State', 2, 'Running', '', 0x000000);
-      IPS_SetVariableProfileAssociation('TRXMS.State', 3, 'Done', '', 0x000000);
+    if (!IPS_VariableProfileExists('MS.State')) {
+      IPS_CreateVariableProfile('MS.State', 1);
+      IPS_SetVariableProfileAssociation('MS.State', 0, 'Off', 'Power', 0x000000);
+      IPS_SetVariableProfileAssociation('MS.State', 1, 'On', 'Power', 0x000000);
+      IPS_SetVariableProfileAssociation('MS.State', 2, 'Running', 'Power', 0x000000);
+      IPS_SetVariableProfileAssociation('MS.State', 3, 'Done', 'Power', 0x000000);
     }
 
     parent::Create();
@@ -27,21 +26,24 @@ class TRXMachineState extends IPSModule {
     $this->RegisterPropertyInteger('StartTime', 0);
     $this->RegisterPropertyInteger('StartEnergy', 0);
 
-    $this->RegisterTimer('TimerOff', 0, 'TRXMS_SetState($_IPS[\'TARGET\'], 0);');
-    $this->RegisterTimer('TimerDone', 0, 'TRXMS_SetState($_IPS[\'TARGET\'], 4);');
+    $this->RegisterTimer('TimerOff', 0, 'MS_SetState($_IPS[\'TARGET\'], 0);');
+    $this->RegisterTimer('TimerDone', 0, 'MS_SetState($_IPS[\'TARGET\'], 4);');
 
     $this->SetState(0);
   }
 
   public function ApplyChanges() {
     parent::ApplyChanges();
-    if (!@$this->GetIDForIdent('STATE')) $this->RegisterVariableInteger('STATE', 'Zustand', 'TRXMS.State', 1);
-    if (!@$this->GetIDForIdent('ENERGY')) $this->RegisterVariableInteger('ENERGY', 'Verbrauch', '', 2);
-    if (!@$this->GetIDForIdent('DURATION')) $this->RegisterVariableInteger('DURATION', 'Dauer', '', 3);
+    if (!$StateID = @$this->GetIDForIdent('STATE')) $this->RegisterVariableInteger('STATE', 'Zustand', 'MS.State', 1);
+    if (!$EnergyID = @$this->GetIDForIdent('ENERGY')) $this->RegisterVariableFloat('ENERGY', 'Verbrauch', '~Electricity', 2);
+    if (!$DurationID = @$this->GetIDForIdent('DURATION')) {
+      $DurationID = $this->RegisterVariableInteger('DURATION', 'Dauer', '', 3);
+      IPS_SetIcon($StateID, 'Clock');
+    }
 
     $PowerID = $this->ReadPropertyInteger('PowerId');
 
-    if (!$EventID = @IPS_GetObjectIDByIdent("ON_POWER_CHANGE", $this->InstanceID)) {
+    if (!$EventID = @IPS_GetObjectIDByIdent('ON_POWER_CHANGE', $this->InstanceID)) {
       $EventID = IPS_CreateEvent(0);
       IPS_SetParent($EventID, $this->InstanceID);
       IPS_SetIdent($EventID, 'ON_POWER_CHANGE');
@@ -50,7 +52,7 @@ class TRXMachineState extends IPSModule {
       IPS_SetPosition($EventID, 999);
     }
     IPS_SetEventTrigger($EventID, 0, $PowerID);
-    IPS_SetEventScript($EventID, 'TRXMS_Update($_IPS[\'TARGET\']);');
+    IPS_SetEventScript($EventID, 'MS_Update($_IPS[\'TARGET\']);');
     IPS_SetEventActive($EventID, true);
   }
 
@@ -97,7 +99,7 @@ class TRXMachineState extends IPSModule {
       IPS_ApplyChanges($this->InstanceID);
     } elseif ($value == 4 && $this->ReadPropertyInteger('StartTime') > 0) {
       IPS_LogMessage('TEST', $this->ReadPropertyInteger('StartTime'));
-      SetValueInteger($this->GetIDForIdent('DURATION'), (time() - $this->ReadPropertyInteger('StartTime')));
+      SetValueInteger($this->GetIDForIdent('DURATION'), ceil( (time() - $this->ReadPropertyInteger('StartTime')) / 60 ));
       SetValueInteger($this->GetIDForIdent('ENERGY'), ($this->CurrentEnergy() - $this->ReadPropertyInteger('StartEnergy')));
       IPS_SetProperty($this->InstanceID, 'StartTime', 0);
       IPS_ApplyChanges($this->InstanceID);

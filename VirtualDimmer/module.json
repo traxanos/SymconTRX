@@ -1,0 +1,11 @@
+{
+  "id": "{BBB44293-6475-4BAA-AD1F-FE7F3C14EB9B}",
+  "name": "VirtualDimmer",
+  "type": 3,
+  "vendor": "Traxanos",
+  "aliases": [ "Traxanos virtual dimmer" ],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [ "" ],
+  "prefix": "VD"
+}
