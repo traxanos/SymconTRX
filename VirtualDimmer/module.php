@@ -47,8 +47,8 @@ class VirtualDimmer extends IPSModule {
     $form['elements'][] = Array('type' => 'Label', 'label' => "Optionen");
     $form['elements'][] = Array('type' => 'CheckBox', 'name' => 'ToggleLast', 'caption' => 'Soll beim toggeln der letzte statt der maximal Wert genutzt werden?');
 
-    //$form['elements'][] = Array('type' => 'Label', 'label' => "Eine Referenz um den aktuell Wert zurück zu lesen");
-    //$form['elements'][] = Array('type' => 'SelectVariable', 'name' => 'Reference', 'caption' => 'Referenz *');
+    $form['elements'][] = Array('type' => 'Label', 'label' => "Eine Referenz um den aktuell Wert zurück zu lesen");
+    $form['elements'][] = Array('type' => 'SelectVariable', 'name' => 'Reference', 'caption' => 'Referenz *');
 
     $form['elements'][] = Array('type' => 'Label', 'label' => "* Optional");
     return json_encode($form);
@@ -79,6 +79,29 @@ class VirtualDimmer extends IPSModule {
     }
   }
 
+  private function SyncReference() {
+    if($ReferenceID = $this->ReadPropertyInteger('Reference')) {
+      $min = $this->ReadPropertyInteger('Min');
+      $max = $this->ReadPropertyInteger('Max');
+      $current = GetValueInteger($this->GetIDForIdent('CURRENT'));
+      $direction = GetValueBoolean($this->GetIDForIdent('DIRECTION'));
+
+      $value = GetValue($ReferenceID);
+      if($value === true) {
+        $current = $max;
+        $direction = true;
+      } elseif($value === false) {
+        $current = $min;
+        $direction = false;
+      } else {
+        $current = (integer)$value;
+      }
+
+      SetValueBoolean($this->GetIDForIdent('DIRECTION'), $direction);
+      SetValueInteger($this->GetIDForIdent('CURRENT'), $current);
+    }
+  }
+
   private function ApplyEventHandler($ButtonName, $EventIdent, $EventTitle, $fn) {
     if($ButtonID = @$this->ReadPropertyInteger($ButtonName)) {
       if (!$EventID = @IPS_GetObjectIDByIdent($EventIdent, $this->InstanceID)) {
@@ -98,6 +121,7 @@ class VirtualDimmer extends IPSModule {
   }
 
   public function PressShort() {
+    $this->SyncReference();
     $min = $this->ReadPropertyInteger('Min');
     $max = $this->ReadPropertyInteger('Max');
     $current = GetValueInteger($this->GetIDForIdent('CURRENT'));
@@ -130,6 +154,7 @@ class VirtualDimmer extends IPSModule {
   }
 
   public function PressLong() {
+    $this->SyncReference();
     $this->RunDimmer();
   }
 
