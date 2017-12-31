@@ -1,5 +1,6 @@
 <?
 class VirtualDimmer extends IPSModule {
+
   public function __construct($InstanceID) {
     parent::__construct($InstanceID);
   }
@@ -11,6 +12,8 @@ class VirtualDimmer extends IPSModule {
     $this->RegisterPropertyInteger('Min', 0);
     $this->RegisterPropertyInteger('Max', 100);
     $this->RegisterPropertyInteger('Step', 10);
+    $this->RegisterPropertyBoolean('ToggleLast', false);
+    $this->RegisterPropertyInteger('Reference', 0);
 
     for($i = 1; $i <= 99; $i++) {
       $this->RegisterPropertyInteger("ButtonShort$i", 0);
@@ -35,12 +38,19 @@ class VirtualDimmer extends IPSModule {
     $form['elements'][] = Array('type' => 'NumberSpinner', 'name' => 'Quantity', 'caption' => 'Anzahl Taster');
     for($i = 1; $i <= $quantity; $i++) {
       $form['elements'][] = Array('type' => 'Label', 'label' => "Taster $i");
-      $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonShort$i", 'caption' => 'Press short');
+      $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonShort$i", 'caption' => 'Press short *');
       $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonLong$i", 'caption' => 'Press long');
       $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonHold$i", 'caption' => 'Hold long');
       $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonRelease$i", 'caption' => 'Release long');
     }
 
+    $form['elements'][] = Array('type' => 'Label', 'label' => "Optionen");
+    $form['elements'][] = Array('type' => 'CheckBox', 'name' => 'ToggleLast', 'caption' => 'Soll beim toggeln der letzte statt der maximal Wert genutzt werden?');
+
+    //$form['elements'][] = Array('type' => 'Label', 'label' => "Eine Referenz um den aktuell Wert zurück zu lesen");
+    //$form['elements'][] = Array('type' => 'SelectVariable', 'name' => 'Reference', 'caption' => 'Referenz *');
+
+    $form['elements'][] = Array('type' => 'Label', 'label' => "* Optional");
     return json_encode($form);
   }
 
@@ -48,7 +58,8 @@ class VirtualDimmer extends IPSModule {
     parent::ApplyChanges();
 
     if (!@$this->GetIDForIdent('CURRENT')) $this->RegisterVariableInteger('CURRENT', 'Current', '', 1);
-    if (!@$this->GetIDForIdent('DIRECTION')) $this->RegisterVariableBoolean('DIRECTION', 'Richtung', '', 2);
+    if (!@$this->GetIDForIdent('LAST')) $this->RegisterVariableInteger('LAST', 'Last', '', 2);
+    if (!@$this->GetIDForIdent('DIRECTION')) $this->RegisterVariableBoolean('DIRECTION', 'Richtung', '', 3);
 
     if (!$ActionID = @$this->GetIDForIdent('ACTION')) {
       $ActionID = IPS_CreateScript(0);
@@ -90,12 +101,19 @@ class VirtualDimmer extends IPSModule {
     $min = $this->ReadPropertyInteger('Min');
     $max = $this->ReadPropertyInteger('Max');
     $current = GetValueInteger($this->GetIDForIdent('CURRENT'));
+    $last = GetValueInteger($this->GetIDForIdent('LAST'));
+    $direction = GetValueBoolean($this->GetIDForIdent('DIRECTION'));
 
     if($current > $min) {
       $current = $min;
       $direction = false;
     } else {
-      $current = $max;
+      $togglelast = $this->ReadPropertyBoolean('ToggleLast');
+      if ($togglelast && $last > 0) {
+        $current = $last;
+      } else {
+        $current = $max;
+      }
       $direction = true;
     }
 
@@ -147,6 +165,7 @@ class VirtualDimmer extends IPSModule {
 
     if($before != $current) {
       SetValueInteger($this->GetIDForIdent('CURRENT'), $current);
+      SetValueInteger($this->GetIDForIdent('LAST'), $current);
       $this->CallAction($current);
     }
   }
