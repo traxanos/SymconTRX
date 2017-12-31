@@ -7,13 +7,41 @@ class VirtualDimmer extends IPSModule {
   public function Create() {
     parent::Create();
 
-    $this->RegisterPropertyInteger('ButtonShort', 0);
-    $this->RegisterPropertyInteger('ButtonLong', 0);
-    $this->RegisterPropertyInteger('ButtonHold', 0);
-    $this->RegisterPropertyInteger('ButtonRelease', 0);
-    $this->RegisterPropertyInteger('ValueStart', 0);
-    $this->RegisterPropertyInteger('ValueEnd', 100);
-    $this->RegisterPropertyInteger('ValueStep', 10);
+    $this->RegisterPropertyInteger('Quantity', 1);
+    $this->RegisterPropertyInteger('Min', 0);
+    $this->RegisterPropertyInteger('Max', 100);
+    $this->RegisterPropertyInteger('Step', 10);
+
+    for($i = 1; $i <= 99; $i++) {
+      $this->RegisterPropertyInteger("ButtonShort$i", 0);
+      $this->RegisterPropertyInteger("ButtonLong$i", 0);
+      $this->RegisterPropertyInteger("ButtonHold$i", 0);
+      $this->RegisterPropertyInteger("ButtonRelease$i", 0);
+    }
+  }
+
+  public function GetConfigurationForm() {
+    $form = Array(
+      'elements' => Array(),
+      'actions' => Array()
+    );
+
+    $form['elements'][] = Array('type' => 'Label', 'label' => "Dimmer");
+    $form['elements'][] = Array('type' => 'NumberSpinner', 'name' => 'Min', 'caption' => 'Min');
+    $form['elements'][] = Array('type' => 'NumberSpinner', 'name' => 'Max', 'caption' => 'Max');
+    $form['elements'][] = Array('type' => 'NumberSpinner', 'name' => 'Step', 'caption' => 'Schritte');
+
+    $quantity = $this->ReadPropertyInteger('Quantity');
+    $form['elements'][] = Array('type' => 'NumberSpinner', 'name' => 'Quantity', 'caption' => 'Anzahl Taster');
+    for($i = 1; $i <= $quantity; $i++) {
+      $form['elements'][] = Array('type' => 'Label', 'label' => "Taster $i");
+      $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonShort$i", 'caption' => 'Press short');
+      $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonLong$i", 'caption' => 'Press long');
+      $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonHold$i", 'caption' => 'Hold long');
+      $form['elements'][] = Array('type' => 'SelectVariable', 'name' => "ButtonRelease$i", 'caption' => 'Release long');
+    }
+
+    return json_encode($form);
   }
 
   public function ApplyChanges() {
@@ -28,12 +56,16 @@ class VirtualDimmer extends IPSModule {
       IPS_SetIdent($ActionID, 'ACTION');
       IPS_SetHidden($ActionID, true);
       IPS_SetName($ActionID, 'Aktion');
+      IPS_SetPosition($ActionID, 100);
     }
 
-    $this->ApplyEventHandler('ButtonShort', 'EVENT_SHORT', 'Event press short', 'PressShort');
-    $this->ApplyEventHandler('ButtonLong', 'EVENT_LONG', 'Event press long', 'PressLong');
-    $this->ApplyEventHandler('ButtonHold', 'EVENT_HOLD', 'Event hold long', 'HoldLong');
-    $this->ApplyEventHandler('ButtonRelease', 'EVENT_RELEASE', 'Event release long', 'ReleaseLong');
+    $quantity = $this->ReadPropertyInteger('Quantity');
+    for($i = 1; $i <= 99; $i++) {
+      $this->ApplyEventHandler("ButtonShort$i", "EVENT_SHORT_$i", "Button $i - Event press short", 'PressShort');
+      $this->ApplyEventHandler("ButtonLong$i", "EVENT_LONG_$i", "Button $i - Event press long", 'PressLong');
+      $this->ApplyEventHandler("ButtonHold$i", "EVENT_HOLD_$i", "Button $i - Event hold long", 'HoldLong');
+      $this->ApplyEventHandler("ButtonRelease$i", "EVENT_RELEASE_$i", "Button $i - Event release long", 'ReleaseLong');
+    }
   }
 
   private function ApplyEventHandler($ButtonName, $EventIdent, $EventTitle, $fn) {
@@ -44,6 +76,7 @@ class VirtualDimmer extends IPSModule {
         IPS_SetIdent($EventID, $EventIdent);
         IPS_SetHidden($EventID, true);
         IPS_SetName($EventID, $EventTitle);
+        IPS_SetPosition($EventID, 1000);
       }
       IPS_SetEventTrigger($EventID, 0, $ButtonID);
       IPS_SetEventScript($EventID, "VD_$fn(\$_IPS['TARGET']);");
@@ -54,17 +87,18 @@ class VirtualDimmer extends IPSModule {
   }
 
   public function PressShort() {
-    //IPS_LogMessage('VirtualDimmer', "Press short");
-    $start = $this->ReadPropertyInteger('ValueStart');
-    $end = $this->ReadPropertyInteger('ValueEnd');
+    $min = $this->ReadPropertyInteger('Min');
+    $max = $this->ReadPropertyInteger('Max');
     $current = GetValueInteger($this->GetIDForIdent('CURRENT'));
-    if($current > $start) {
-      $current = $start;
+
+    if($current > $min) {
+      $current = $min;
       $direction = false;
     } else {
-      $current = $end;
+      $current = $max;
       $direction = true;
     }
+
     $this->CallAction($current);
 
     SetValueBoolean($this->GetIDForIdent('DIRECTION'), $direction);
@@ -78,34 +112,26 @@ class VirtualDimmer extends IPSModule {
   }
 
   public function PressLong() {
-    //IPS_LogMessage('VirtualDimmer', "Press long");
     $this->RunDimmer();
   }
 
   public function HoldLong() {
-    //IPS_LogMessage('VirtualDimmer', "Hold long");
     $this->RunDimmer();
   }
 
   public function ReleaseLong() {
-    //IPS_LogMessage('VirtualDimmer', "Release long");
-    $current = GetValueInteger($this->GetIDForIdent('CURRENT'));
-    $direction = GetValueBoolean($this->GetIDForIdent('DIRECTION'));
-    $start = $this->ReadPropertyInteger('ValueStart');
-    $end = $this->ReadPropertyInteger('ValueEnd');
-
-    $direction = !$direction;
-
+    $direction = !GetValueBoolean($this->GetIDForIdent('DIRECTION'));
     SetValueBoolean($this->GetIDForIdent('DIRECTION'), $direction);
   }
 
   private function RunDimmer() {
+    $direction = GetValueBoolean($this->GetIDForIdent('DIRECTION'));
     $current = GetValueInteger($this->GetIDForIdent('CURRENT'));
     $before = $current;
-    $start = $this->ReadPropertyInteger('ValueStart');
-    $end = $this->ReadPropertyInteger('ValueEnd');
-    $step = $this->ReadPropertyInteger('ValueStep');
-    $direction = GetValueBoolean($this->GetIDForIdent('DIRECTION'));
+
+    $min = $this->ReadPropertyInteger('Min');
+    $max = $this->ReadPropertyInteger('Max');
+    $step = $this->ReadPropertyInteger('Step');
 
     if ($direction) { // True -> Down
       $current -= $step;
@@ -113,10 +139,10 @@ class VirtualDimmer extends IPSModule {
       $current += $step;
     }
 
-    if($current >= $end) {
-      $current = $end;
-    } elseif($current <= $start) {
-      $current = $start;
+    if($current >= $max) {
+      $current = $max;
+    } elseif($current <= $min) {
+      $current = $min;
     }
 
     if($before != $current) {
