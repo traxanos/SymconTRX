@@ -24,7 +24,7 @@
     $this->RegisterPropertyBoolean('TimerDone', false);
 
     $this->RegisterPropertyInteger('StartTime', 0);
-    $this->RegisterPropertyInteger('StartEnergy', 0);
+    $this->RegisterPropertyFloat('StartEnergy', 0);
 
     $this->RegisterTimer('TimerOff', 0, 'MS_SetState($_IPS[\'TARGET\'], 0);');
     $this->RegisterTimer('TimerDone', 0, 'MS_SetState($_IPS[\'TARGET\'], 4);');
@@ -100,7 +100,7 @@
     } elseif ($value == 4 && $this->ReadPropertyInteger('StartTime') > 0) {
       IPS_LogMessage('TEST', $this->ReadPropertyInteger('StartTime'));
       SetValueInteger($this->GetIDForIdent('DURATION'), ceil( (time() - $this->ReadPropertyInteger('StartTime')) / 60 ));
-      SetValueInteger($this->GetIDForIdent('ENERGY'), ($this->CurrentEnergy() - $this->ReadPropertyInteger('StartEnergy')));
+      SetValueFloat($this->GetIDForIdent('ENERGY'), ($this->CurrentEnergy() - $this->ReadPropertyFloat('StartEnergy')));
       IPS_SetProperty($this->InstanceID, 'StartTime', 0);
       IPS_ApplyChanges($this->InstanceID);
     }
