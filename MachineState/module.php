@@ -27,7 +27,7 @@
     $this->RegisterPropertyFloat('StartEnergy', 0);
 
     $this->RegisterTimer('TimerOff', 0, 'MS_SetState($_IPS[\'TARGET\'], 0);');
-    $this->RegisterTimer('TimerDone', 0, 'MS_SetState($_IPS[\'TARGET\'], 4);');
+    $this->RegisterTimer('TimerDone', 0, 'MS_SetState($_IPS[\'TARGET\'], 3);');
 
     $this->SetState(0);
   }
