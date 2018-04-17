@@ -1,4 +1,5 @@
-<? class MachineState extends IPSModule {
+<?
+class MachineState extends IPSModule {
   public function __construct($InstanceID) {
     parent::__construct($InstanceID);
   }
@@ -14,6 +15,13 @@
 
     parent::Create();
 
+    if (!$StateID = @$this->GetIDForIdent('STATE')) {
+      $StateID = $this->RegisterVariableInteger('STATE', 'Zustand', 'MS.State', 1);
+      IPS_SetIcon($StateID, 'Clock');
+    }
+    if (!$EnergyID = @$this->GetIDForIdent('ENERGY')) $this->RegisterVariableFloat('ENERGY', 'Verbrauch', '~Electricity', 2);
+    if (!$DurationID = @$this->GetIDForIdent('DURATION'))  $DurationID = $this->RegisterVariableInteger('DURATION', 'Dauer', '', 3);
+
     $this->RegisterPropertyInteger('PowerId', 0);
     $this->RegisterPropertyInteger('EnergyId', 0);
     $this->RegisterPropertyFloat('PowerOff', 1);
@@ -23,9 +31,6 @@
     $this->RegisterPropertyInteger('DelayDone', 60);
     $this->RegisterPropertyBoolean('TimerDone', false);
 
-    $this->RegisterPropertyInteger('StartTime', 0);
-    $this->RegisterPropertyFloat('StartEnergy', 0);
-
     $this->RegisterTimer('TimerOff', 0, 'MS_SetState($_IPS[\'TARGET\'], 0);');
     $this->RegisterTimer('TimerDone', 0, 'MS_SetState($_IPS[\'TARGET\'], 3);');
 
@@ -34,26 +39,21 @@
 
   public function ApplyChanges() {
     parent::ApplyChanges();
-    if (!$StateID = @$this->GetIDForIdent('STATE')) $this->RegisterVariableInteger('STATE', 'Zustand', 'MS.State', 1);
-    if (!$EnergyID = @$this->GetIDForIdent('ENERGY')) $this->RegisterVariableFloat('ENERGY', 'Verbrauch', '~Electricity', 2);
-    if (!$DurationID = @$this->GetIDForIdent('DURATION')) {
-      $DurationID = $this->RegisterVariableInteger('DURATION', 'Dauer', '', 3);
-      IPS_SetIcon($StateID, 'Clock');
-    }
 
     $PowerID = $this->ReadPropertyInteger('PowerId');
-
-    if (!$EventID = @IPS_GetObjectIDByIdent('ON_POWER_CHANGE', $this->InstanceID)) {
-      $EventID = IPS_CreateEvent(0);
-      IPS_SetParent($EventID, $this->InstanceID);
-      IPS_SetIdent($EventID, 'ON_POWER_CHANGE');
-      IPS_SetHidden($EventID, true);
-      IPS_SetName($EventID, 'On power change');
-      IPS_SetPosition($EventID, 999);
+    if ($PowerID > 0) {
+      if (!$EventID = @IPS_GetObjectIDByIdent('ON_POWER_CHANGE', $this->InstanceID)) {
+        $EventID = IPS_CreateEvent(0);
+        IPS_SetParent($EventID, $this->InstanceID);
+        IPS_SetIdent($EventID, 'ON_POWER_CHANGE');
+        IPS_SetHidden($EventID, true);
+        IPS_SetName($EventID, 'On power change');
+        IPS_SetPosition($EventID, 999);
+      }
+      IPS_SetEventTrigger($EventID, 0, $PowerID);
+      IPS_SetEventScript($EventID, 'MS_Update($_IPS[\'TARGET\']);');
+      IPS_SetEventActive($EventID, true);
     }
-    IPS_SetEventTrigger($EventID, 0, $PowerID);
-    IPS_SetEventScript($EventID, 'MS_Update($_IPS[\'TARGET\']);');
-    IPS_SetEventActive($EventID, true);
   }
 
   public function Update() {
@@ -90,19 +90,15 @@
     $this->StopTimerDone();
 
     if ($value == 0 || $value == 1) {
-      IPS_SetProperty($this->InstanceID, 'StartTime', 0);
-      IPS_SetProperty($this->InstanceID, 'StartEnergy', 0);
-      IPS_ApplyChanges($this->InstanceID);
-    } elseif ($value == 2 && $this->ReadPropertyInteger('StartTime') == 0) {
-      IPS_SetProperty($this->InstanceID, 'StartTime', time());
-      IPS_SetProperty($this->InstanceID, 'StartEnergy', $this->CurrentEnergy());
-      IPS_ApplyChanges($this->InstanceID);
-    } elseif ($value == 4 && $this->ReadPropertyInteger('StartTime') > 0) {
-      IPS_LogMessage('TEST', $this->ReadPropertyInteger('StartTime'));
-      SetValueInteger($this->GetIDForIdent('DURATION'), ceil( (time() - $this->ReadPropertyInteger('StartTime')) / 60 ));
-      SetValueFloat($this->GetIDForIdent('ENERGY'), ($this->CurrentEnergy() - $this->ReadPropertyFloat('StartEnergy')));
-      IPS_SetProperty($this->InstanceID, 'StartTime', 0);
-      IPS_ApplyChanges($this->InstanceID);
+      $this->SetBuffer('StartTime', '0');
+      $this->SetBuffer('StartEnergy', '0');
+    } elseif ($value == 2 && (int)$this->GetBuffer('StartTime') == 0) {
+      $this->SetBuffer('StartTime', time());
+      $this->SetBuffer('StartEnergy', $this->CurrentEnergy());
+    } elseif ($value == 3 && (int)$this->GetBuffer('StartTime') > 0) {
+      SetValueInteger($this->GetIDForIdent('DURATION'), ceil( (time() - $this->GetBuffer('StartTime')) / 60 ));
+      SetValueFloat($this->GetIDForIdent('ENERGY'), ($this->CurrentEnergy() - (float)$this->GetBuffer('StartEnergy')));
+      $this->SetBuffer('StartTime', 0);
     }
 
     SetValueInteger($this->GetIDForIdent('STATE'), $value);
