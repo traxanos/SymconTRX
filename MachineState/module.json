@@ -6,6 +6,6 @@
   "aliases": [ "Traxanos machine state" ],
   "parentRequirements": [],
   "childRequirements": [],
-  "implemented": [ "" ],
+  "implemented": [],
   "prefix": "MS"
 }
