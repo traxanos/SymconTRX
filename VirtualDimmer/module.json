@@ -6,6 +6,6 @@
   "aliases": [ "Traxanos virtual dimmer" ],
   "parentRequirements": [],
   "childRequirements": [],
-  "implemented": [ "" ],
+  "implemented": [],
   "prefix": "VD"
 }
